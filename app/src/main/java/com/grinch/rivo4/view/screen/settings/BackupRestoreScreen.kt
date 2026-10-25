@@ -5,6 +5,11 @@ import android.net.Uri
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -68,7 +73,7 @@ fun BackupRestoreScreen(
     var passwordDialogForImport by remember { mutableStateOf(false) }
     var passwordDialogEnablesEncryption by remember { mutableStateOf(false) }
     val status by viewModel.status.collectAsState()
-    val contactImportProgress by viewModel.contactImportProgress.collectAsState()
+    val contactTransferProgress by viewModel.contactTransferProgress.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     var showStandardizeConfirm by remember { mutableStateOf(false) }
 
@@ -197,6 +202,54 @@ fun BackupRestoreScreen(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
+            item {
+                AnimatedVisibility(
+                    visible = contactTransferProgress != null,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
+                    val progress = contactTransferProgress
+                    if (progress != null) {
+                        RivoExpressiveCard(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(
+                                        if (progress.exporting) {
+                                            R.string.settings_backup_export_progress_title
+                                        } else {
+                                            R.string.settings_backup_import_progress_title
+                                        }
+                                    ),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                if (progress.exporting) {
+                                    RivoLinearProgressIndicator()
+                                } else {
+                                    RivoLinearProgressIndicator(
+                                        progress = {
+                                            if (progress.total == 0) 0f
+                                            else progress.imported.toFloat() / progress.total
+                                        }
+                                    )
+                                    Text(
+                                        stringResource(
+                                            R.string.settings_backup_import_progress_count,
+                                            progress.imported,
+                                            progress.total
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             item {
                 RivoExpressiveGroup(
                     title = stringResource(R.string.settings_backup_contacts_header),
@@ -328,7 +381,7 @@ fun BackupRestoreScreen(
                                 expanded = retentionMenuExpanded,
                                 onDismissRequest = { retentionMenuExpanded = false }
                             ) {
-                                (1..20).forEach { count ->
+                                (1..15).forEach { count ->
                                     DropdownMenuItem(
                                         text = {
                                             Text(stringResource(R.string.settings_backup_retention_count, count))
@@ -528,29 +581,4 @@ fun BackupRestoreScreen(
         )
     }
 
-    contactImportProgress?.let { progress ->
-        AlertDialog(
-            onDismissRequest = {},
-            title = { Text(stringResource(R.string.settings_backup_import_progress_title)) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    RivoLinearProgressIndicator(
-                        progress = {
-                            if (progress.total == 0) 0f
-                            else progress.imported.toFloat() / progress.total
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Text(
-                        stringResource(
-                            R.string.settings_backup_import_progress_count,
-                            progress.imported,
-                            progress.total
-                        )
-                    )
-                }
-            },
-            confirmButton = {}
-        )
-    }
 }

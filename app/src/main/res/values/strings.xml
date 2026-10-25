@@ -735,6 +735,7 @@ White text</string>
     <string name="settings_backup_set_password">Set password</string>
     <string name="settings_backup_change_password">Change password</string>
     <string name="settings_backup_password_dialog_title">Enter backup password</string>
+    <string name="settings_backup_export_progress_title">Exporting contacts</string>
     <string name="settings_backup_import_progress_title">Importing contacts</string>
     <string name="settings_backup_import_progress_count">%1$d of %2$d contacts imported</string>
     <string name="settings_backup_auto_export">Automatically export after new contacts</string>

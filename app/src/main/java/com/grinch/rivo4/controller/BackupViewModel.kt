@@ -31,12 +31,16 @@ class BackupViewModel(
     private val contactBackupManager: ContactBackupManager
 ) : ViewModel() {
 
-    data class ImportProgress(val imported: Int, val total: Int)
+    data class ContactTransferProgress(
+        val imported: Int,
+        val total: Int,
+        val exporting: Boolean
+    )
 
     private val _status = MutableStateFlow<String?>(null)
     val status = _status.asStateFlow()
-    private val _contactImportProgress = MutableStateFlow<ImportProgress?>(null)
-    val contactImportProgress = _contactImportProgress.asStateFlow()
+    private val _contactTransferProgress = MutableStateFlow<ContactTransferProgress?>(null)
+    val contactTransferProgress = _contactTransferProgress.asStateFlow()
 
     private val json = Json { ignoreUnknownKeys = true; prettyPrint = true }
     private val settingsJson = Json {
@@ -50,10 +54,13 @@ class BackupViewModel(
     fun exportContacts(context: Context, uri: Uri) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
+                _contactTransferProgress.value = ContactTransferProgress(0, 0, exporting = true)
                 contactBackupManager.exportContacts(context, uri)
                 _status.value = context.getString(R.string.backup_contacts_export_success)
             } catch (e: Exception) {
                 _status.value = context.getString(R.string.backup_export_failed, e.message)
+            } finally {
+                _contactTransferProgress.value = null
             }
         }
     }
@@ -63,7 +70,8 @@ class BackupViewModel(
             try {
                 val vCard = contactBackupManager.readContacts(context, uri)
                 val totalContacts = Regex("(?im)^BEGIN:VCARD\\s*$").findAll(vCard).count()
-                _contactImportProgress.value = ImportProgress(0, totalContacts)
+                _contactTransferProgress.value =
+                    ContactTransferProgress(0, totalContacts, exporting = false)
                 BufferedReader(StringReader(vCard)).use { reader ->
                         var line: String?
                         var currentName = ""
@@ -93,8 +101,11 @@ class BackupViewModel(
                                         )
                                     )
                                     importedContacts++
-                                    _contactImportProgress.value =
-                                        ImportProgress(importedContacts, totalContacts)
+                                    _contactTransferProgress.value = ContactTransferProgress(
+                                        importedContacts,
+                                        totalContacts,
+                                        exporting = false
+                                    )
                                 }
                                 currentName = ""
                                 currentNickname = null
@@ -137,7 +148,7 @@ class BackupViewModel(
             } catch (e: Exception) {
                 _status.value = context.getString(R.string.backup_import_failed, e.message)
             } finally {
-                    _contactImportProgress.value = null
+                _contactTransferProgress.value = null
             }
         }
     }
