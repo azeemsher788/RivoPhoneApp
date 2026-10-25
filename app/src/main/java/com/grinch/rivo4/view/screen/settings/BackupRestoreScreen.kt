@@ -63,8 +63,11 @@ fun BackupRestoreScreen(
     }
     var retentionMenuExpanded by remember { mutableStateOf(false) }
     val status by viewModel.status.collectAsState()
+    val importProgress by viewModel.importProgress.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     var showStandardizeConfirm by remember { mutableStateOf(false) }
+    var showPasswordDialog by remember { mutableStateOf(false) }
+    var passwordDraft by remember { mutableStateOf("") }
 
     LaunchedEffect(status) {
         status?.let {
@@ -200,20 +203,28 @@ fun BackupRestoreScreen(
                         )
                     }
                     item {
-                        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                            OutlinedTextField(
-                                value = backupPassword,
-                                onValueChange = {
-                                    backupPassword = it
-                                    prefs.setContactBackupPassword(it)
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                label = { Text(stringResource(R.string.settings_backup_password)) },
-                                supportingText = { Text(stringResource(R.string.settings_backup_password_supporting)) },
-                                visualTransformation = PasswordVisualTransformation(),
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                                singleLine = true,
-                                enabled = encryptionEnabled
+                        RivoListItem(
+                            headline = stringResource(R.string.settings_backup_password),
+                            supporting = if (backupPassword.isBlank()) {
+                                stringResource(R.string.settings_backup_password_supporting)
+                            } else {
+                                stringResource(R.string.settings_backup_password_set)
+                            },
+                            leadingIcon = Icons.Outlined.Password,
+                            enabled = encryptionEnabled,
+                            onClick = {
+                                passwordDraft = backupPassword
+                                showPasswordDialog = true
+                            }
+                        )
+                    }
+                    item {
+                        if (encryptionEnabled && backupPassword.isBlank()) {
+                            Text(
+                                text = stringResource(R.string.settings_backup_password_supporting),
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
                             )
                         }
                     }
@@ -433,6 +444,85 @@ fun BackupRestoreScreen(
             message = stringResource(R.string.settings_backup_restore_confirm_message),
             confirmLabel = stringResource(R.string.settings_backup_restore_confirm_action),
             icon = Icons.Outlined.Restore
+        )
+    }
+
+    if (showPasswordDialog) {
+        AlertDialog(
+            onDismissRequest = { showPasswordDialog = false },
+            title = { Text(stringResource(R.string.settings_backup_password_dialog_title)) },
+            text = {
+                Column {
+                    Text(
+                        text = stringResource(R.string.settings_backup_password_dialog_supporting),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = passwordDraft,
+                        onValueChange = { passwordDraft = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(stringResource(R.string.settings_backup_password)) },
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        backupPassword = passwordDraft
+                        prefs.setContactBackupPassword(passwordDraft)
+                        showPasswordDialog = false
+                    }
+                ) { Text(stringResource(R.string.settings_backup_password_save)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPasswordDialog = false }) {
+                    Text(stringResource(R.string.settings_backup_password_cancel))
+                }
+            }
+        )
+    }
+
+    if (importProgress != null) {
+        val progress = importProgress!!
+        AlertDialog(
+            onDismissRequest = {
+                if (progress.completed) viewModel.clearImportProgress()
+            },
+            title = { Text(stringResource(R.string.settings_backup_import_progress_title)) },
+            text = {
+                Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                    val fraction = if (progress.total > 0) {
+                        progress.imported.toFloat() / progress.total
+                    } else {
+                        0f
+                    }
+                    if (!progress.completed) {
+                        LinearProgressIndicator(
+                            progress = { fraction },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = stringResource(
+                            R.string.settings_backup_import_progress_count,
+                            progress.imported,
+                            progress.total
+                        )
+                    )
+                }
+            },
+            confirmButton = {
+                if (progress.completed) {
+                    TextButton(onClick = { viewModel.clearImportProgress() }) {
+                        Text(stringResource(R.string.action_confirm))
+                    }
+                }
+            }
         )
     }
 }

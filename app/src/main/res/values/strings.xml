@@ -730,6 +730,14 @@ White text</string>
     <string name="settings_backup_encryption_supporting">Use AES encryption for manual and automatic contact backups</string>
     <string name="settings_backup_password">Backup password</string>
     <string name="settings_backup_password_supporting">Required to encrypt and import encrypted contact backups</string>
+    <string name="settings_backup_password_set">Password is saved. Tap to change it.</string>
+    <string name="settings_backup_password_dialog_title">Set backup password</string>
+    <string name="settings_backup_password_dialog_supporting">This password is reused for automatic encryption and required to decrypt encrypted backups.</string>
+    <string name="settings_backup_password_cancel">Cancel</string>
+    <string name="settings_backup_password_save">Save password</string>
+    <string name="settings_backup_import_progress_title">Importing contacts</string>
+    <string name="settings_backup_import_progress_count">%1$d of %2$d contacts imported</string>
+    <string name="backup_contacts_import_success_count">%1$d contacts imported successfully</string>
     <string name="settings_backup_auto_export">Automatically export after new contacts</string>
     <string name="settings_backup_auto_export_supporting">Keep the latest contact backup in your selected local folder</string>
     <string name="settings_backup_folder">Automatic backup folder</string>

@@ -30,9 +30,12 @@ class BackupViewModel(
     private val preferenceManager: PreferenceManager,
     private val contactBackupManager: ContactBackupManager
 ) : ViewModel() {
+    data class ImportProgress(val imported: Int, val total: Int, val completed: Boolean = false)
 
     private val _status = MutableStateFlow<String?>(null)
     val status = _status.asStateFlow()
+    private val _importProgress = MutableStateFlow<ImportProgress?>(null)
+    val importProgress = _importProgress.asStateFlow()
 
     private val json = Json { ignoreUnknownKeys = true; prettyPrint = true }
     private val settingsJson = Json {
@@ -58,6 +61,9 @@ class BackupViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val vCard = contactBackupManager.readContacts(context, uri)
+                val totalContacts = Regex("(?im)^BEGIN:VCARD\\s*$").findAll(vCard).count()
+                _importProgress.value = ImportProgress(0, totalContacts)
+                var importedContacts = 0
                 BufferedReader(StringReader(vCard)).use { reader ->
                         var line: String?
                         var currentName = ""
@@ -74,7 +80,7 @@ class BackupViewModel(
                                     val resolvedName = currentName.ifBlank {
                                         currentNumbers.firstOrNull() ?: currentEmails.firstOrNull() ?: "Unknown"
                                     }
-                                    contactsRepo.saveContact(
+                                    val saved = contactsRepo.saveContact(
                                         Contact(
                                             id = "0",
                                             name = resolvedName,
@@ -85,6 +91,10 @@ class BackupViewModel(
                                             notes = currentNotes
                                         )
                                     )
+                                    if (saved) {
+                                        importedContacts++
+                                        _importProgress.value = ImportProgress(importedContacts, totalContacts)
+                                    }
                                 }
                                 currentName = ""
                                 currentNickname = null
@@ -123,11 +133,17 @@ class BackupViewModel(
                             }
                         }
                     }
-                _status.value = context.getString(R.string.backup_contacts_import_success)
+                _importProgress.value = ImportProgress(importedContacts, totalContacts, completed = true)
+                _status.value = context.getString(R.string.backup_contacts_import_success_count, importedContacts)
             } catch (e: Exception) {
+                _importProgress.value = null
                 _status.value = context.getString(R.string.backup_import_failed, e.message)
             }
         }
+    }
+
+    fun clearImportProgress() {
+        _importProgress.value = null
     }
 
     fun exportCallLogs(context: Context, uri: Uri) {
